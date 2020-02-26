@@ -49,10 +49,25 @@ public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    //这个结构的key是topic的名称，他存储了所有topic的属性信息。value是个QueueData队列，队列里的长度等于这个topic数据存储的master broker的个数
+    //,QueueData里存储着broker的名称、读写queue的数量、同步标识等
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
+
+    //以BorkerName为索引，相同名称的Broker可能存储在多台机器，一个master和多个slave。这个结构存储着一个BrokerName对应的属性信息，
+    // 包括所属的Cluster名称，一个Master Broker和多个Slave Broker的地址信息
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
+
+    //存储的是急群众Cluster的信息，结果很简单，就是一个Cluster名称对应一个由BrokerName组成的集合
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+
+    //这个结构和brokerAddrTable有关系，但是内容完全不同，这个结构的Key是BrokerAddr，也就是对应着一台机器，BrokerAddrTable中的Key是BrokerName
+    //多个机器的BrokerName可以相同。BrokerLiveTable存储的内容是这台Broker机器的实时状态，包括上次更新状态的时间戳，NameServer对定期检查这个时间戳，
+    // 超时没有更新就认为这个Broker无效，将其从Broker列表里清楚
     private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
+
+    //Filter Server是过滤器服务，是RocketMQ的一种服务端过滤方式，一个Broker可以有一个或者多个Filter Serve。这个结构的key是Broker的地址
+    //value是和这个Broker关联的多个Filter Server的地址。
     private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public RouteInfoManager() {
